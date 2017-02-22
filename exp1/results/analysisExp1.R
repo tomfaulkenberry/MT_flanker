@@ -1,9 +1,12 @@
 setwd("~/github/MT_flanker/exp1/results/")
+library(dplyr)
+library(flankr)
+
 
 rawData<-read.csv("processed.csv")
 
 # clean up data...had to remove an additional 5 trial failures (total of 13,200 trials)
-dataStep3<-subset(rawData,subset=accuracy==1) # remove errors..note: subj 112 had ALL trials as error trials!
+dataStep3<-subset(rawData,subset=accuracy==1) # remove errors..note: subj 112 had ALL trials as error trials, so 112 is removed from analysis
 
 
 meanRT<-mean(dataStep3$rt)
@@ -97,3 +100,36 @@ aggMT=aggregate(MT~subject+congruity+targetSide,data=data,FUN="mean") # RT perfo
 MT.aov=aov(MT~congruity*targetSide+Error(as.factor(subject)/(congruity*targetSide)),data=aggMT)
 summary(MT.aov)
 print(model.tables(MT.aov,"means"),digits=3)
+
+
+#-----------------
+# flankr modeling
+#
+
+# tidy up some of the variable names
+flankrData <- rawData 
+flankrData <- rename(flankrData, congruency = congruity)
+
+# change RT to seconds
+flankrData$rt <- as.numeric(flankrData$rt)/1000
+
+#------------------------------------------------------------------------------
+### do the flankr modelling
+
+# get only the relevant data columns
+data2 <- flankrData %>%
+  select(subject_nr, congruency, accuracy, rt)
+
+# do some modelling (this can take AGES)
+dstp_fit <- fitDSTP(data2)
+ssp_fit <- fitSSP(data2)
+
+# store the model plots
+pdf("DSTP_fitExp1.pdf", width = 8, height = 8)
+plotFitDSTP(modelFit = dstp_fit, data = data2[complete.cases(data2),])
+dev.off()
+
+pdf("SSP_fitExp1.pdf", width = 8, height = 8)
+ssp_plot <- plotFitSSP(modelFit = ssp_fit, data = data2[complete.cases(data2),])
+dev.off()
+
